@@ -59,6 +59,18 @@ module segment7(
                 cathodes = 7'b0000000;
             4'd9:        
                 cathodes = 7'b0000100;
+            4'd10:        
+                cathodes = 7'b0001000;
+            4'd11:        
+                cathodes = 7'b1100000;
+            4'd12:        
+                cathodes = 7'b0011001;
+            4'd13:        
+                cathodes = 7'b1000010;
+            4'd14:        
+                cathodes = 7'b0110000;
+            4'd15:        
+                cathodes = 7'b0111000;
             default :
                 cathodes = 7'b1111110; // -
         endcase

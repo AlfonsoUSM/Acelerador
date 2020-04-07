@@ -30,6 +30,7 @@
         .bramB_byte(),      // 8 bits Input : BRAM_B read byte of data
         .bram_addr(),       // 10 bits Output : BRAM reading address
         .tx_output(),       // 8 bits Output : byte to send on uart
+        .scalar_outputt(),   // 16 bits Output : result to display 
         .send(),            // 1 bit Output : send byte on uart signal
         .done()
     );
@@ -46,6 +47,7 @@ module vector_processing #(parameter NBytes = 1024)(
     input [7:0] bramB_byte,
     output [9:0] bram_addr,
     output [7:0] tx_output,
+    output [15:0] scalar_output,
     output send,
     output done
     );
@@ -77,6 +79,7 @@ module vector_processing #(parameter NBytes = 1024)(
     logic [9:0] byte_num, next_num;     // max number for counting
     logic [9:0] read_addr, next_addr;   // bram reading address
     logic [7:0] tx_byte;                // uart byte to transmit
+    logic [15:0] euc_distance, scalar_out; 
     //logic [7:0] read_byteA, read_byteB;
     logic send_signal;                  // uart tx send signal
     logic ready, next_ready;            // done processing command signal (pulse)
@@ -85,14 +88,14 @@ module vector_processing #(parameter NBytes = 1024)(
     //assign read_byteB = bramB_byte;
     assign bram_addr = read_addr;
     assign tx_output = tx_byte;
+    assign scalar_output = scalar_out;
     assign send = send_signal;
     assign done = ready;
     
     logic [7:0] sum_byte, avg_byte;
     logic [7:0] byte_distance;
     logic [15:0] distance_product;
-    logic [15:0] scalar_result, next_scalar;
-    logic [15:0] euc_distance, scalar_out; 
+    logic [25:0] scalar_result, next_scalar;
     logic root_en, root_flag;
     
     assign sum_byte = bramA_byte[7:0] + bramB_byte[7:0];
@@ -107,7 +110,7 @@ module vector_processing #(parameter NBytes = 1024)(
             byte_num <= NBytes - 1;
             read_addr <= 10'd0;
             ready <= 1'b0;
-            scalar_result <= 16'b0;
+            scalar_result <= 26'b0;
         end
         else begin
             state <= next_state;
@@ -145,7 +148,7 @@ module vector_processing #(parameter NBytes = 1024)(
         
         case (state)
             IDLE: begin
-                next_scalar = 16'd0;
+                next_scalar = 26'd0;
                 if (result[3] == 1'b1) begin        // command received signal (pulse)
                     next_command = result[1:0];
                     next_num = NBytes - 1;
@@ -209,14 +212,14 @@ module vector_processing #(parameter NBytes = 1024)(
             end
             BYTE_READ: begin
                 if (command[0] == 1'b1)
-                    next_scalar = scalar_result + byte_distance;
+                    next_scalar = scalar_result + {18'd0, byte_distance};
                 else
-                    next_scalar = scalar_result + distance_product;
+                    next_scalar = scalar_result + {10'd0, distance_product};
                 case (read_addr)
                     byte_num: next_addr = 10'd0;
                     10'd1: begin
                         next_instate = BYTE_SEND;
-                        next_num = 10'd3;
+                        next_num  = 10'd1;
                         next_addr = 10'd0;
                     end
                     default: next_addr = read_addr + 10'd1;
@@ -227,18 +230,9 @@ module vector_processing #(parameter NBytes = 1024)(
     
     cordic_0 square_root (
         .s_axis_cartesian_tvalid(root_en),  // input wire s_axis_cartesian_tvalid
-        .s_axis_cartesian_tdata(scalar_result),    // input wire [15 : 0] s_axis_cartesian_tdata
+        .s_axis_cartesian_tdata({6'd0, scalar_result}),    // input wire [31 : 0] s_axis_cartesian_tdata
         .m_axis_dout_tvalid(root_flag),            // output wire m_axis_dout_tvalid
         .m_axis_dout_tdata(euc_distance)              // output wire [15 : 0] m_axis_dout_tdata
     );
-    
-ila_0 logic_analyzer (
-	.clk(clk), // input wire clk
-	.probe0(instate), // input wire [1:0]  probe0  
-	.probe1(read_addr), // input wire [9:0]  probe1 
-	.probe2(send_signal), // input wire [0:0]  probe2 
-	.probe3(tx_byte), // input wire [7:0]  probe4 
-	.probe4(byte_distance), // input wire [7:0]  probe5 
-	.probe5(distance_product)
-);
+
 endmodule

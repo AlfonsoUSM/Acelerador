@@ -30,7 +30,8 @@
         .bramB_en(),    // 1 bit Output : enable BRAM_B write
         .bram_byte(),   // 8 bits Output : BRAM byte of data to write
         .bram_addr(),   // 10 bits Output : BRAM writing address
-        .result()       // 4 bits Output : trasnsmit result instruction
+        .result(),      // 4 bits Output : trasnsmit result instruction
+        .vec_ready()    // 2 bits Output : vectors A and B loaded flags
     );
     
 */ ////////////////////////////////////////////////////////
@@ -45,8 +46,7 @@ module input_interface #(parameter NBytes = 1024)(
     output [7:0] bram_byte,
     output [9:0] bram_addr,
     output [3:0] result,
-    output [1:0] ready_leds,
-    output [2:0] s
+    output [1:0] vec_ready
     );
         
     
@@ -70,8 +70,7 @@ module input_interface #(parameter NBytes = 1024)(
     assign bram_byte = rx_byte;
     assign bram_addr = write_addr;
     assign result = command;
-    assign ready_leds = led; 
-    assign s = state;
+    assign vec_ready = led; 
      
     always_ff @ (posedge clk) begin
         if (reset == 1'b1) begin
@@ -115,7 +114,7 @@ module input_interface #(parameter NBytes = 1024)(
                     next_state = INST;
             end
             COMM: begin
-                if (done == 1'b1)
+                if (done == 1'b1)               // wait for processor to finish
                     next_state = INST;
             end
         endcase
@@ -170,7 +169,7 @@ module input_interface #(parameter NBytes = 1024)(
         endcase
     end
     
-    uart_rx #(.CLKS_PER_BIT(100)) serial_rx(
+    uart_rx #(.CLKS_PER_BIT(100)) serial_rx(        // baudrate = 100MH/100
         .Clock(clk),
         .reset(reset),
         .Rx_Serial(uart_rx),
