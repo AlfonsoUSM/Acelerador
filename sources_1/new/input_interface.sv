@@ -177,4 +177,12 @@ module input_interface #(parameter NBytes = 1024)(
         .Rx_Byte(rx_raw_byte)
     );
     
+//    ila_0 your_instance_name (
+//	   .clk(clk), // input wire clk
+
+
+//	   .probe0(next_command[3]), // input wire [0:0]  probe0  
+//	   .probe1(done) // input wire [0:0]  probe1
+//    );
+    
 endmodule

@@ -77,30 +77,32 @@ module output_interface #(parameter NBytes = 1024)(
     logic [3:0] bcd;
     logic [7:0] anode_mask;
     logic [7:0] an7seg, next_an7seg;
-    logic [7:0][3:0] display, next_display;
+    logic [31:0] display_bcd;
+    logic [15:0] display_bin, next_display;
     
     assign anodes = an7seg[7:0] | anode_mask[7:0] ;
+    assign display_bcd[31:21] = 11'd0;
     
     always_ff @ (posedge clk) begin
         if (reset == 1'b1) begin
             state <= IDLE;
-            display <= 32'd0;
+            display_bin <= 16'd0;
         end
         else begin
             state <= next_state;
-            display <= next_display;
+            display_bin <= next_display;
         end
     end
     
     always_comb begin
         next_state = state;
-        next_display = display;
+        next_display = display_bin;
         anode_mask = 8'b11111111;
         case (state)
             IDLE: begin
                 if (vectors_ready == 2'b11) begin
                     next_state = READY;
-                    next_display = 32'd0;
+                    next_display = 16'd0;
                 end
             end
             READY: begin
@@ -115,7 +117,7 @@ module output_interface #(parameter NBytes = 1024)(
             RESULT: begin
                 anode_mask = 8'b11100000;
                 if (done)
-                    next_display = {16'd0, scalar_result};
+                    next_display = scalar_result;
                 if (vectors_ready != 2'b11)
                     next_state = IDLE;
             end
@@ -135,25 +137,30 @@ module output_interface #(parameter NBytes = 1024)(
         next_an7seg = {an7seg[6:0], an7seg[7]};
         case (an7seg)
             8'b11111110:
-                bcd = display[0];
+                bcd = display_bcd[3:0];
             8'b11111101:
-                bcd = display[1];
+                bcd = display_bcd[7:4];
             8'b11111011:
-                bcd = display[2];
+                bcd = display_bcd[11:8];
             8'b11110111:
-                bcd = display[3];
+                bcd = display_bcd[15:12];
             8'b11101111:
-                bcd = display[4];
+                bcd = display_bcd[19:16];
             8'b11011111:
-                bcd = display[5];
+                bcd = display_bcd[23:20];
             8'b10111111:
-                bcd = display[6];
+                bcd = display_bcd[27:24];
             8'b01111111:
-                bcd = display[7];
+                bcd = display_bcd[31:28];
             default:
                 bcd = 4'd10;
         endcase
     end
+    
+    bin2bcd #(.W(16)) binary_to_bcd(
+        .bin(display_bin),
+        .bcd(display_bcd[20:0])
+    ); 
     
     clock_divider #(.d (50000)) seg7_clk(
         .clk_in(clk),
